@@ -61,9 +61,9 @@ static uint32_t note1[] = {1, 341, 286, 227, 191};
 static void gpio_config(void)
 {
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
-    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_8, LL_GPIO_MODE_OUTPUT);    
+	LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_8, LL_GPIO_MODE_OUTPUT);    
   
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_0, LL_GPIO_MODE_INPUT);
 	LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_1, LL_GPIO_MODE_INPUT);
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_10, LL_GPIO_MODE_INPUT);
@@ -135,13 +135,20 @@ static void exti_config()
     NVIC_SetPriority(EXTI4_15_IRQn, 0);
 }
 
-struct butt
+struct but
 {
 	int num;				//number of button
 	uint32_t el;	        //exti line
 	int statement;			//pressed or not
-	int ms_old;				//time beetween pressed (to eliminate inaccuracy)	
+	int ms_old;				//time beetween pressed (to eliminate inaccuracy)
+	int t_pressed;			//when button change statement to 1;
 };
+
+struct but but_create(int n, uint32_t e, int s, int m, int t)
+{
+	struct but b = {n, e, s, m, t};
+	return b;
+}
 
 struct sw
 {
@@ -149,53 +156,79 @@ struct sw
 	int t_busy;
 };
 
-static struct butt b0 = {0, LL_EXTI_LINE_0, 0, 0};
-static struct butt b1 = {1, LL_EXTI_LINE_1, 0, 0};
-static struct butt b2 = {2, LL_EXTI_LINE_10, 0, 0};
-static struct butt b3 = {3, LL_EXTI_LINE_11, 0, 0};
 static struct sw s1 = {0, 0};
+const int but_ar_size = 4;
+static struct but b[4];
 
-int chose_sw (int num_but)
+int but_fill(void)
 {
-	s1.indicator = num_but + 1;
-	s1.t_busy = milliseconds;
+	b[0] = but_create(0, LL_EXTI_LINE_0, 0, 0, 0);
+	b[1] = but_create(1, LL_EXTI_LINE_1, 0, 0, 0);
+	b[2] = but_create(2, LL_EXTI_LINE_10, 0, 0, 0);
+	b[3] = but_create(3, LL_EXTI_LINE_11, 0, 0, 0);
+
+	return 0;
+}
+
+int chose_sw ()
+{	
+	int ind = 0;
+
+	for(int i = 0; i < but_ar_size; i++)
+	{
+		if(b[i].statement == 1)
+		{
+			if(b[i].t_pressed >= s1.t_busy)
+			{
+				s1.t_busy = b[i].t_pressed;
+				ind = b[i].num + 1;
+			}
+			
+			else
+				if(s1.indicator == b[i].num + 1)
+					s1.t_busy = 0;
+		}
+	}
+	
+	s1.indicator = ind; 	
 	return 0; 
 }
 
-int butt_handler(struct butt * but)
+int butt_handler(struct but * but)
 {
 	int ms = milliseconds;
      
     if(ms - but->ms_old > 90)
     {    
         LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_8);
-        but->ms_old = milliseconds;  
         
         if(LL_EXTI_IsActiveFlag_0_31(but->el))
         {                    
-         	if(statement == 0) 
+         	if(statement == 0 && LL_EXTI_IsEnabledFallingTrig_0_31(but->el) == 1) 
             {
                 but->statement = 1;
-                LL_EXTI_EnableFallingTrig_0_31(but->el);                  
+				but->t_pressed = milliseconds;
+				
+                LL_EXTI_EnableRisingTrig_0_31(but->el);   
+				but->ms_old = milliseconds; 
             }
               
-            else 
+            if(statement == 1 && LL_EXTI_IsEnabledRisingTrig_0_31(but->el) == 1) 
             {
             	but->statement = 0;
-                LL_EXTI_EnableRisingTrig_0_31(but->el);                  
+				but->t_pressed = 0;
+				
+                LL_EXTI_EnableFallingTrig_0_31(but->el);   
+				but->ms_old = milliseconds;
             }
 		}      
    	}
    
-    if(ms - but->ms_old <= 90 && ms - but->ms_old > 0 && but->statement == 1 && LL_EXTI_IsActiveFlag_0_31(but->el))
+    if(ms - but->ms_old <= 90 && ms - but->ms_old > 0 && LL_EXTI_IsActiveFlag_0_31(but->el))
     {    
     	but->ms_old = milliseconds; 
-        but->statement = 0;
-        LL_EXTI_EnableRisingTrig_0_31(but->el);         
+		but->t_pressed = 0;
     }
-
-	if(but->statement == 1)
-		chose_sw (but->num);
     
    	LL_EXTI_ClearFlag_0_31(but->el);
     return 0;
@@ -203,14 +236,14 @@ int butt_handler(struct butt * but)
 
 void EXTI0_1_IRQHandler()
 {    
-	butt_handler(&b0);
-	butt_handler(&b1);
+	butt_handler(b);
+	butt_handler(b + 1);
 }
 
 void EXTI4_15_IRQHandler()
 { 
-	butt_handler(&b2);
-	butt_handler(&b3);
+	butt_handler(b + 2);
+	butt_handler(b + 3);
 }
 
 void SysTick_Handler(void)
@@ -221,15 +254,17 @@ void SysTick_Handler(void)
     if((LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_0) == 1) && (LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_1) == 1) && (LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_10) == 1) && (LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_11) == 1)) 
     {
         s1.indicator = 0;
-        b0.statement = 0;
-		b1.statement = 0;
-		b2.statement = 0;
-		b3.statement = 0;
-        LL_EXTI_EnableRisingTrig_0_31(b0.el); 
-		LL_EXTI_EnableRisingTrig_0_31(b1.el);
-		LL_EXTI_EnableRisingTrig_0_31(b2.el);
-		LL_EXTI_EnableRisingTrig_0_31(b3.el);
+        b[0].statement = 0;
+		b[1].statement = 0;
+		b[2].statement = 0;
+		b[3].statement = 0;
+        LL_EXTI_EnableRisingTrig_0_31(b[0].el); 
+		LL_EXTI_EnableRisingTrig_0_31(b[1].el);
+		LL_EXTI_EnableRisingTrig_0_31(b[2].el);
+		LL_EXTI_EnableRisingTrig_0_31(b[3].el);
     }      
+
+	chose_sw ();
 
     LL_TIM_OC_SetCompareCH1(TIM2, (uint32_t)(0.96 * (note1[s1.indicator])));
         LL_TIM_SetAutoReload(TIM2, note1[s1.indicator]);
@@ -237,6 +272,7 @@ void SysTick_Handler(void)
 
 int main(void)
 {
+	but_fill();
     rcc_config();
     gpio_config();
     timers_config();
