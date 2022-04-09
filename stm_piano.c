@@ -8,12 +8,22 @@
 #include "stm32f0xx_ll_cortex.h"
 #include "system_stm32f0xx.h" // because of there is "uint??_t" this include must be under other.
 #include "stm32f0xx_ll_tim.h"
-//------------------------------------------------------------------------------
-//rcc config 
-//------------------------------------------------------------------------------
+
+/**
+  * System Clock Configuration
+  * The system Clock is configured as follow :
+  *    System Clock source            = PLL (HSI/2)
+  *    SYSCLK(Hz)                     = 48000000
+  *    HCLK(Hz)                       = 48000000
+  *    AHB Prescaler                  = 1
+  *    APB1 Prescaler                 = 1
+  *    HSI Frequency(Hz)              = 8000000
+  *    PLLMUL                         = 12
+  *    Flash Latency(WS)              = 1
+  */
 static void rcc_config()
-{
-    /* Set FLASH latency */
+{     
+        /* Set FLASH latency */
     LL_FLASH_SetLatency(LL_FLASH_LATENCY_1);
 
     /* Enable HSI and wait for activation*/
@@ -39,197 +49,46 @@ static void rcc_config()
      * through SystemCoreClockUpdate function) */
     SystemCoreClock = 48000000;
     SystemCoreClockUpdate(); // we need this func to update SystemClock info.
+    
 }
-//------------------------------------------------------------------------------
-//gpio config 
-//------------------------------------------------------------------------------
+static int milliseconds = 0;
+static uint32_t note1[] = {1, 573, 510, 455, 405, 382, 341, 303, 286, 255, 227, 202, 191, 170, 152, 143, 128, 114, 101, 96};
+static int N = 78;		//en-coder round
+static int move_note = 0;
+
+
 static void gpio_config(void)
 {
-  
-    //Init port for indicator     
+	//led
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
-    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_7, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_5, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_11, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_12, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_0, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_1, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_6, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_10, LL_GPIO_MODE_OUTPUT);
-    
-    
-    
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
-    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_7, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_6, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_15, LL_GPIO_MODE_OUTPUT);
-    
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_4, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_14, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_15, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_13, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_6, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_0, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_8, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_9, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_10, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_12, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_11, LL_GPIO_MODE_OUTPUT);
-    
-    
-    //Init ports for right buttons     
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
+	LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_8, LL_GPIO_MODE_OUTPUT);    
+  
+	////Init ports for buttons 
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_0, LL_GPIO_MODE_INPUT);
-    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_1, LL_GPIO_MODE_INPUT);
+	LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_1, LL_GPIO_MODE_INPUT);
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_10, LL_GPIO_MODE_INPUT);
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_11, LL_GPIO_MODE_INPUT);
-    
-    //Init ports for left buttons     
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
+	
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_2, LL_GPIO_MODE_INPUT);
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_3, LL_GPIO_MODE_INPUT);
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_13, LL_GPIO_MODE_INPUT);
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_14, LL_GPIO_MODE_INPUT);
     
-    //led
-    
-     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_8, LL_GPIO_MODE_OUTPUT);
-  
     return;
 }
-//------------------------------------------------------------------------------
-//left display config 
-//------------------------------------------------------------------------------
-void dyn_display_left (uint8_t num, int pos, int point)
-{
-    uint16_t out;
-    uint16_t POS[4];  
 
-    POS[0] = LL_GPIO_PIN_6 | LL_GPIO_PIN_3 | LL_GPIO_PIN_15;
-    POS[1] = LL_GPIO_PIN_3 | LL_GPIO_PIN_7 | LL_GPIO_PIN_15;
-    POS[2] = LL_GPIO_PIN_6 | LL_GPIO_PIN_7 | LL_GPIO_PIN_15;
-    POS[3] = LL_GPIO_PIN_7 | LL_GPIO_PIN_3 | LL_GPIO_PIN_6;         
-          
-    #define A1 LL_GPIO_PIN_15
-    #define B1 LL_GPIO_PIN_13
-    #define C1 LL_GPIO_PIN_9
-    #define D1 LL_GPIO_PIN_10
-    #define E1 LL_GPIO_PIN_11
-    #define F1 LL_GPIO_PIN_14
-    #define G1 LL_GPIO_PIN_8
-    #define POINT1 LL_GPIO_PIN_6
-
-    uint16_t decoder[10];
-
-    decoder[0] =  A1 | B1 | C1 | D1 | E1 | F1;
-    decoder[1] =  B1 | C1;
-    decoder[2] =  A1 | B1 | D1 | E1 | G1;
-    decoder[3] =  A1 | B1 | C1 | D1 | G1;
-    decoder[4] =  B1 | C1 | F1 | G1;
-    decoder[5] =  A1 | C1 | D1 | F1 | G1;
-    decoder[6] =  A1 | C1 | D1 | E1 | F1 | G1;
-    decoder[7] =  A1 | B1 | C1 | F1;
-    decoder[8] =  A1 | B1 | C1 | D1 | E1 | F1 | G1;
-    decoder[9] =  A1 | B1 | C1 | D1 | F1 | G1;
-
-
-    LL_GPIO_WriteOutputPort(GPIOB,(LL_GPIO_PIN_7 | LL_GPIO_PIN_6 | LL_GPIO_PIN_3 | LL_GPIO_PIN_15));
-    //LL_GPIO_WriteOutputPort(GPIOA, 0);
-
-    out = decoder[num];
-    
-    if(point == 1)
-        out = out | POINT1;
-    
-    LL_GPIO_WriteOutputPort(GPIOA, out);
-
-    LL_GPIO_WriteOutputPort(GPIOB, POS[pos]);
-
-    return;
-}
-//------------------------------------------------------------------------------
-//right display config 
-//------------------------------------------------------------------------------
-void dyn_display_right (uint8_t num, int pos, int point)
-{
-    uint16_t out;
-    uint16_t POS[4];  
-
-    POS[0] = LL_GPIO_PIN_3 | LL_GPIO_PIN_4 | LL_GPIO_PIN_12;
-    POS[1] = LL_GPIO_PIN_0 | LL_GPIO_PIN_4 | LL_GPIO_PIN_12;
-    POS[2] = LL_GPIO_PIN_0 | LL_GPIO_PIN_3 | LL_GPIO_PIN_12;
-    POS[3] = LL_GPIO_PIN_0 | LL_GPIO_PIN_3 | LL_GPIO_PIN_3;         
-          
-    #define A LL_GPIO_PIN_0
-    #define B LL_GPIO_PIN_5
-    #define C LL_GPIO_PIN_7
-    #define D LL_GPIO_PIN_11
-    #define E LL_GPIO_PIN_12
-    #define F LL_GPIO_PIN_1
-    #define G LL_GPIO_PIN_6
-    #define POINT LL_GPIO_PIN_10
-
-    uint16_t decoder[10];
-
-    decoder[0] =  A | B | C | D | E | F;
-    decoder[1] =  B | C;
-    decoder[2] =  A | B | D | E | G;
-    decoder[3] =  A | B | C | D | G;
-    decoder[4] =  B | C | F | G;
-    decoder[5] =  A | C | D | F | G;
-    decoder[6] =  A | C | D | E | F | G;
-    decoder[7] =  A | B | C | F;
-    decoder[8] =  A | B | C | D | E | F | G;
-    decoder[9] =  A | B | C | D | F | G;
-
-
-    LL_GPIO_WriteOutputPort(GPIOA,(LL_GPIO_PIN_0 | LL_GPIO_PIN_3 | LL_GPIO_PIN_4 | LL_GPIO_PIN_12));
-    //LL_GPIO_WriteOutputPort(GPIOC, 0);
-
-    out = decoder[num];
-    
-    if(point == 1)
-        out = out | POINT;
-    
-    LL_GPIO_WriteOutputPort(GPIOC, out);
-
-    LL_GPIO_WriteOutputPort(GPIOA, POS[pos]);
-
-    return;
-}
-//------------------------------------------------------------------------------
-//system timer config 
-//------------------------------------------------------------------------------
 static void systick_config()
 {
     LL_InitTick(48000000, 1000);
     LL_SYSTICK_EnableIT();
     NVIC_SetPriority(SysTick_IRQn, 1);
 }
-//------------------------------------------------------------------------------
-//required variables
-//------------------------------------------------------------------------------
-static uint32_t note1[] = {341, 341, 286, 227, 191};
-static uint32_t note2[] = {341, 382, 303, 255, 202, 170, 152, 143, 114};
-static int indicator1 = 0;
-static int indicator2 = 0;
-static int milliseconds = 0;
-static int ms_old[] = {0, 0, 0 ,0};
-static int statement[] = { 0, 0, 0, 0, 0, 0, 0, 0};
-static int left_note = 0;
-static int right_note = 0;
-int ms_i = 0;
-int N = 99;
-int note_num_l[] = {2, 4, 6, 2, 4, 6};
-int note_num_r[] = {1, 3, 5, 7, 2, 3, 4, 6};
-//------------------------------------------------------------------------------
-//timer 2 config for sw 1
-//------------------------------------------------------------------------------
+
+//timer 2, pin 5 for sw1
 static void timers_config_sw1(void)
-{
+{     
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_5, LL_GPIO_MODE_ALTERNATE);
     LL_GPIO_SetAFPin_0_7(GPIOA, LL_GPIO_PIN_5, LL_GPIO_AF_2);
@@ -245,13 +104,11 @@ static void timers_config_sw1(void)
     LL_TIM_EnableIT_CC1(TIM2);
     LL_TIM_EnableARRPreload(TIM2);
     LL_TIM_EnableCounter(TIM2);
-
+    
     return;
 }
 
-//------------------------------------------------------------------------------
-//timer 14 config for sw 2
-//------------------------------------------------------------------------------
+//timer 14, pin 7 for sw2
 static void timers_config_sw2(void)
 {
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
@@ -272,10 +129,67 @@ static void timers_config_sw2(void)
 
     return;
 }
-//------------------------------------------------------------------------------
-//timer 3 config for encoder 2
-//------------------------------------------------------------------------------
-static void timers_config_enc2(void)
+
+//exti for buttons
+static void exti_config()
+{
+	LL_APB1_GRP2_EnableClock(LL_APB1_GRP2_PERIPH_SYSCFG);
+	LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_0, LL_GPIO_PULL_UP);
+	LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_1, LL_GPIO_PULL_UP);
+    LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_10, LL_GPIO_PULL_UP);
+    LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_11, LL_GPIO_PULL_UP);
+	
+	LL_GPIO_SetPinPull(GPIOC, LL_GPIO_PIN_2, LL_GPIO_PULL_UP);
+    LL_GPIO_SetPinPull(GPIOC, LL_GPIO_PIN_3, LL_GPIO_PULL_UP);
+    LL_GPIO_SetPinPull(GPIOC, LL_GPIO_PIN_13, LL_GPIO_PULL_UP);
+    LL_GPIO_SetPinPull(GPIOC, LL_GPIO_PIN_14, LL_GPIO_PULL_UP);
+
+    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE0);
+	LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE1);
+    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE10);
+    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE11);
+	
+	LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE2);
+    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE3);
+	LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE13);
+    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE14);
+    
+    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_0);
+    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_0);
+
+	LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_1);
+    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_1);
+	
+	LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_2);
+    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_2);
+    
+    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_3);
+    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_3);
+
+	LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_10);
+    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_10);
+    
+    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_11);
+    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_11);
+	
+	LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_13);
+    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_13);
+    
+    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_14);
+    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_14);
+
+    NVIC_EnableIRQ(EXTI0_1_IRQn);
+    NVIC_SetPriority(EXTI0_1_IRQn, 0);
+	
+	NVIC_EnableIRQ(EXTI2_3_IRQn);
+    NVIC_SetPriority(EXTI2_3_IRQn, 0);
+
+	NVIC_EnableIRQ(EXTI4_15_IRQn);
+    NVIC_SetPriority(EXTI4_15_IRQn, 0);
+}
+
+//timer configuration for en-coder
+static void timers_config_enc(void)
 {
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_4, LL_GPIO_MODE_ALTERNATE);
@@ -298,476 +212,256 @@ static void timers_config_enc2(void)
     
     return;
 }
-/*
-//------------------------------------------------------------------------------
-//timer 2 config for encoder 1
-//------------------------------------------------------------------------------
-static void timers_config_enc1(void)
+
+//struct for buttons
+struct but
 {
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_1, LL_GPIO_MODE_ALTERNATE);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_5, LL_GPIO_MODE_ALTERNATE);
-    LL_GPIO_SetAFPin_0_7(GPIOA, LL_GPIO_PIN_1, LL_GPIO_AF_2);
-    LL_GPIO_SetAFPin_0_7(GPIOA, LL_GPIO_PIN_5, LL_GPIO_AF_2);
-    LL_GPIO_SetPinPull(GPIOA, LL_GPIO_PIN_1, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOA, LL_GPIO_PIN_5, LL_GPIO_PULL_UP);
+	int num;				//number of button
+	uint32_t el;	        //exti line
+	int statement;			//pressed or not
+	int ms_old;				//time beetween pressed (to eliminate inaccuracy)
+	int t_pressed;			//when button change statement to 1;
+};
 
-    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
-   
-    LL_TIM_IC_SetActiveInput(TIM2, LL_TIM_CHANNEL_CH1, LL_TIM_ACTIVEINPUT_DIRECTTI);
-    LL_TIM_IC_SetActiveInput(TIM2, LL_TIM_CHANNEL_CH2, LL_TIM_ACTIVEINPUT_DIRECTTI);
-    LL_TIM_IC_SetPolarity(TIM2, LL_TIM_CHANNEL_CH1, LL_TIM_ETR_POLARITY_NONINVERTED);
-    LL_TIM_IC_SetPolarity(TIM2, LL_TIM_CHANNEL_CH2, LL_TIM_ETR_POLARITY_NONINVERTED); 
-    LL_TIM_SetEncoderMode(TIM2, LL_TIM_ENCODERMODE_X4_TI12); 
-
-    LL_TIM_SetAutoReload(TIM2, 95);
-    LL_TIM_EnableCounter(TIM2);
-    
-    return;
-}*/
-//------------------------------------------------------------------------------
-//exti_config for left and right buttons
-//------------------------------------------------------------------------------
-static void exti_config()
+struct but but_create(int n, uint32_t e, int s, int m, int t)
 {
-    LL_APB1_GRP2_EnableClock(LL_APB1_GRP2_PERIPH_SYSCFG);
-    LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_0, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_1, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOC, LL_GPIO_PIN_2, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOC, LL_GPIO_PIN_3, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_10, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_11, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOC, LL_GPIO_PIN_13, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOC, LL_GPIO_PIN_14, LL_GPIO_PULL_UP);
-    
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE0);
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE1);
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE2);
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE3);
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE10);
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE11);
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE13);
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE14);
-    
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_0);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_0);
-    
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_1);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_1);
-    
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_2);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_2);
-    
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_3);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_3);
-    
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_10);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_10);
-    
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_11);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_11);
-    
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_13);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_13);
-    
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_14);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_14);
-
-    NVIC_EnableIRQ(EXTI0_1_IRQn);
-    NVIC_SetPriority(EXTI0_1_IRQn, 0);
-    
-    NVIC_EnableIRQ(EXTI2_3_IRQn);
-    NVIC_SetPriority(EXTI2_3_IRQn, 0);
-    
-    NVIC_EnableIRQ(EXTI4_15_IRQn);
-    NVIC_SetPriority(EXTI4_15_IRQn, 0);
+	struct but b = {n, e, s, m, t};
+	return b;
 }
-//------------------------------------------------------------------------------
-//EXTI for B0 and B1 buttons
-//------------------------------------------------------------------------------
+
+struct sw
+{
+	int indicator;			//note should be played
+};
+
+static struct sw s1 = {0};
+static struct sw s2 = {0};
+const int but_ar_size = 8;
+static struct but b[8];
+
+int but_fill(void)
+{
+	b[0] = but_create(0, LL_EXTI_LINE_13, 0, 0, 0);
+	b[1] = but_create(1, LL_EXTI_LINE_14, 0, 0, 0);
+	b[2] = but_create(2, LL_EXTI_LINE_2, 0, 0, 0);
+	b[3] = but_create(3, LL_EXTI_LINE_3, 0, 0, 0);
+	b[4] = but_create(4, LL_EXTI_LINE_0, 0, 0, 0);
+	b[5] = but_create(5, LL_EXTI_LINE_1, 0, 0, 0);
+	b[6] = but_create(6, LL_EXTI_LINE_10, 0, 0, 0);
+	b[7] = but_create(7, LL_EXTI_LINE_11, 0, 0, 0);
+
+	return 0;
+}
+
+int chose_sw ()
+{	
+	int ind1 = 0;
+	int ind2 = 0;
+
+	for(int i = 0; i < but_ar_size; i++)
+	{
+		if(b[i].statement == 1)
+		{
+			if(ind1 == 0)
+				ind1 = i + 1;
+			else
+			{
+				if(ind2 == 0)
+					ind2 = i + 1;
+				else
+				{
+					if(b[ind1-1].t_pressed < b[i].t_pressed)
+						ind1 = i + 1;
+					else
+						if(b[ind2-1].t_pressed < b[i].t_pressed)
+							ind2 = i + 1;
+				}
+			}			
+		}
+	}
+	
+	if((ind1 == s1.indicator && ind2 == s2.indicator) || (ind2 == s1.indicator && ind1 == s2.indicator))
+		return 0;		
+	
+	if(ind1 == s1.indicator)
+	{
+		s2.indicator = ind2;
+		return 0;
+	}
+	
+	if(ind2 == s1.indicator)
+	{
+		s2.indicator = ind1;
+		return 0;
+	}
+	
+	if(ind1 == s2.indicator)
+	{
+		s1.indicator = ind2;
+		return 0;
+	}
+	
+	if(ind2 == s2.indicator)
+	{
+		s1.indicator = ind1;
+		return 0;
+	}
+	
+	s1.indicator = ind1;
+	s2.indicator = ind2;
+	
+	return 0; 
+}
+
+//handler for buttons
+int butt_handler(struct but * but)
+{
+	int ms = milliseconds;
+     
+    if(ms - but->ms_old > 50)
+    {            
+        if(LL_EXTI_IsActiveFlag_0_31(but->el))
+        {      
+			
+			
+         	if(but->statement == 0 && LL_EXTI_IsEnabledFallingTrig_0_31(but->el) == 1) 
+            {
+				LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_8);
+				
+                but->statement = 1;
+				but->t_pressed = milliseconds;
+				
+                LL_EXTI_EnableRisingTrig_0_31(but->el);   
+				but->ms_old = milliseconds; 
+            }
+            
+			else
+            	if(but->statement == 1 && LL_EXTI_IsEnabledRisingTrig_0_31(but->el) == 1) 
+            	{
+            		but->statement = 0;
+					but->t_pressed = 0;
+			
+                	LL_EXTI_EnableFallingTrig_0_31(but->el);   
+					but->ms_old = milliseconds;
+            	}
+		}      
+   	}
+   
+    if(ms - but->ms_old <= 50 && ms - but->ms_old > 0 && LL_EXTI_IsActiveFlag_0_31(but->el))
+    {    
+    	but->ms_old = milliseconds; 
+		but->t_pressed = 0;
+    }
+    
+   	LL_EXTI_ClearFlag_0_31(but->el);
+    return 0;
+}
+
 void EXTI0_1_IRQHandler()
 {    
-    int ms = milliseconds;
-     
-    //change indicator2 with buttons B0 and B1
-    if(ms - ms_old[0] > 100)
-    {    
-        LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_8);
-        ms_old[0] = milliseconds;  
-        
-  
-        if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_0))
-        {
-                    
-              if(statement[0] == 0) 
-              {
-                  indicator2 = 1;
-                  statement[0] = 1;
-                  LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_0);                  
-              }
-              
-              else 
-              {
-                  if(indicator2 == 1)
-                      indicator2 = 0;
-                  statement[0] = 0;
-                  LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_0);                  
-              }
-        }
-        
-        if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_1))
-        {
-          
-              if(statement[1] == 0)
-              {
-                  indicator2 = 2;
-                  statement[1] = 1;
-                  LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_1);                  
-              }
-              
-              else 
-              {
-                  if(indicator2 == 2)
-                      indicator2 = 0;
-                  statement[1] = 0;
-                  LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_1);                  
-              }    
-        }
-        
-    }
-    
-    if(ms - ms_old[0] <= 100 && ms - ms_old[0] > 0 && statement[0] == 1 && LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_0))
-    {    
-          ms_old[0] = milliseconds; 
-          if(indicator2 == 1)
-              indicator2 = 0;
-          statement[0] = 0;
-          LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_0);         
-    }
-    
-    
-    if(ms - ms_old[0] <= 100 && ms - ms_old[0] > 0 && statement[1] == 1 && LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_1))
-    {    
-          ms_old[0] = milliseconds; 
-          if(indicator2 == 2)
-              indicator2 = 0;
-          statement[1] = 0;
-          LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_1);         
-    }    
-    
-    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_0);
-    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_1);
+	butt_handler(b + 4);
+	butt_handler(b + 5);
 }
-//------------------------------------------------------------------------------
-//EXTI for B10, B11 and C13, C14 buttons
-//------------------------------------------------------------------------------
-void EXTI4_15_IRQHandler()
-{    
-    int ms = milliseconds;
-    int ms0 = milliseconds;
-     
-    //change indicator with buttons B10 and B11 
-    if(ms - ms_old[1] > 100)
-    {    
-        LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_8);
-        ms_old[1] = milliseconds;  
-        
-  
-        if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_10))
-        {
-                    
-              if(statement[2] == 0) 
-              {
-                  indicator2 = 3;
-                  statement[2] = 1;
-                  LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_10);                  
-              }
-              
-              else 
-              {
-                  if(indicator2 == 3)
-                      indicator2 = 0;
-                  statement[2] = 0;
-                  LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_10);                  
-              }
-        }
-        
-        if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_11))
-        {
-          
-              if(statement[3] == 0)
-              {
-                  indicator2 = 4;
-                  statement[3] = 1;
-                  LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_11);                  
-              }
-              
-              else 
-              {
-                  if(indicator2 == 4)
-                      indicator2 = 0;
-                  statement[3] = 0;
-                  LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_11);                  
-              }    
-        }
-        
-    }
-    
-    if(ms - ms_old[1] <= 100 && ms - ms_old[1] > 0   && statement[2] == 1 && LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_10))
-    {    
-          ms_old[1] = milliseconds; 
-          if(indicator2 == 3)
-              indicator2 = 0;
-          statement[2] = 0;
-          LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_10);         
-    }
-    
-    
-    if(ms - ms_old[1] <= 100 && ms - ms_old[1] > 0   && statement[3] == 1 && LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_11))
-    {    
-          ms_old[1] = milliseconds; 
-          if(indicator2 == 4)
-              indicator2 = 0;
-          statement[3] = 0;
-          LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_11);         
-    }
 
-    //change indicator with buttons C13 and C14
-    if(ms0 - ms_old[2] > 100)
-    {    
-        LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_8);
-        ms_old[2] = milliseconds;  
-        
-  
-        if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_13))
-        {                    
-              if(statement[4] == 0) 
-              {
-                  indicator1 = 4;
-                  statement[4] = 1;
-                  LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_13);                  
-              }
-              
-              else 
-              {
-                  if(indicator1 == 4)
-                      indicator1 = 0;
-                  statement[4] = 0;
-                  LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_13);                  
-              }
-        }
-        
-        if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_14))
-        {
-          
-              if(statement[5] == 0)
-              {
-                  indicator1 = 3;
-                  statement[5] = 1;
-                  LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_14);                  
-              }
-              
-              else 
-              {
-                  if(indicator1 == 3)
-                      indicator1 = 0;
-                  statement[5] = 0;
-                  LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_14);                  
-              }    
-        }
-        
-    }
-    
-    if(ms0 - ms_old[2] <= 100 && ms0 - ms_old[2] > 0   && statement[4] == 1 && LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_13))
-    {    
-          ms_old[2] = milliseconds; 
-          if(indicator1 == 4)
-              indicator1 = 0;
-          statement[4] = 0;
-          LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_13);         
-    }
-    
-    
-    if(ms0 - ms_old[2] <= 100 && ms0 - ms_old[2] > 0   && statement[5] == 1 && LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_14))
-    {    
-          ms_old[2] = milliseconds; 
-          if(indicator1 == 3)
-              indicator1 = 0;
-          statement[5] = 0;
-          LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_14);         
-    }
-    
-    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_10);
-    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_11);
-    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_13);
-    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_14);
-}
-//------------------------------------------------------------------------------
-//EXTI for C2 and C3 buttons
-//------------------------------------------------------------------------------
 void EXTI2_3_IRQHandler()
-{
-    
-    int ms = milliseconds;
-
-    //change indicator1 with buttons C2 and C3
-    if(ms - ms_old[3] > 100)
-    {    
-        LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_8);
-        ms_old[3] = milliseconds;  
-        
-  
-        if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_2))
-        {                    
-              if(statement[6] == 0) 
-              {
-                  indicator1 = 2;
-                  statement[6] = 1;
-                  LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_2);                  
-              }
-              
-              else 
-              {
-                  if(indicator1 == 2)
-                      indicator1 = 0;
-                  statement[6] = 0;
-                  LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_2);                  
-              }
-        }
-        
-        if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_3))
-        {
-          
-              if(statement[7] == 0)
-              {
-                  indicator1 = 1;
-                  statement[7] = 1;
-                  LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_3);                  
-              }
-              
-              else 
-              {
-                  if(indicator1 == 1)
-                      indicator1 = 0;
-                  statement[7] = 0;
-                  LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_3);                  
-              }    
-        }
-        
-    }
-    
-    if(ms - ms_old[3] <= 100 && ms - ms_old[3] > 0   && statement[6] == 1 && LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_2))
-    {    
-          ms_old[3] = milliseconds; 
-          if(indicator1 == 2)
-              indicator1 = 0;
-          statement[6] = 0;
-          LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_2);         
-    }
-    
-    
-    if(ms - ms_old[3] <= 100 && ms - ms_old[3] > 0   && statement[7] == 1 && LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_3))
-    {    
-          ms_old[3] = milliseconds; 
-          if(indicator1 == 1)
-              indicator1 = 0;
-          statement[7] = 0;
-          LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_3);         
-    }  
-    
-    //clear flags
-    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_2);
-    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_3);
+{    
+	butt_handler(b + 2);
+	butt_handler(b + 3);
 }
-//------------------------------------------------------------------------------
-//SysTick Handler
-//------------------------------------------------------------------------------
+
+void EXTI4_15_IRQHandler()
+{ 
+	butt_handler(b + 0);
+	butt_handler(b + 1);
+	butt_handler(b + 6);
+	butt_handler(b + 7);
+}
+
+//to do all silent if none button is pressed
+void silent(void)
+{
+	if((LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_0) == 1) && (LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_1) == 1) && (LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_10) == 1) && (LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_11) == 1) &&
+	   (LL_GPIO_IsInputPinSet(GPIOC, LL_GPIO_PIN_2) == 1) && (LL_GPIO_IsInputPinSet(GPIOC, LL_GPIO_PIN_3) == 1) && (LL_GPIO_IsInputPinSet(GPIOC, LL_GPIO_PIN_13) == 1) && (LL_GPIO_IsInputPinSet(GPIOC, LL_GPIO_PIN_14) == 1))	
+	{
+		s1.indicator = 0;
+		s2.indicator = 0;
+        b[0].statement = 0;
+		b[1].statement = 0;
+		b[2].statement = 0;
+		b[3].statement = 0;
+		b[4].statement = 0;
+		b[5].statement = 0;
+		b[6].statement = 0;
+		b[7].statement = 0;
+        LL_EXTI_EnableRisingTrig_0_31(b[0].el); 
+		LL_EXTI_EnableRisingTrig_0_31(b[1].el);
+		LL_EXTI_EnableRisingTrig_0_31(b[2].el);
+		LL_EXTI_EnableRisingTrig_0_31(b[3].el);	
+		LL_EXTI_EnableRisingTrig_0_31(b[4].el); 
+		LL_EXTI_EnableRisingTrig_0_31(b[5].el);
+		LL_EXTI_EnableRisingTrig_0_31(b[6].el);
+		LL_EXTI_EnableRisingTrig_0_31(b[7].el);
+	}
+	return;
+}
+
+//how to move note see on en-coder
+void enc_move(void)
+{
+	if(LL_TIM_GetCounter(TIM3) >= 5*N/8 && LL_TIM_GetCounter(TIM3) < 7*N/8)
+		move_note = 0;
+	if(LL_TIM_GetCounter(TIM3) >= 7*N/8 || LL_TIM_GetCounter(TIM3) < N/8)
+		move_note = 4;
+	if(LL_TIM_GetCounter(TIM3) >= N/8 && LL_TIM_GetCounter(TIM3) < 3*N/8)
+		move_note = 8;
+	if(LL_TIM_GetCounter(TIM3) >= 3*N/8 && LL_TIM_GetCounter(TIM3) < 5*N/8)
+		move_note = 11;
+}
+
+//system timer handler
 void SysTick_Handler(void)
 {
-    milliseconds++;
+    milliseconds++;   
    
-    //do sw 2 silent
-    if((LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_0) == 1) && (LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_1) == 1) && (LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_10) == 1) && (LL_GPIO_IsInputPinSet(GPIOB, LL_GPIO_PIN_11) == 1))
-    {
-        indicator2 = 0;
-        statement[3] = 0;
-        LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_10);
-        statement[2] = 0;
-        LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_11); 
-        statement[1] = 0;
-        LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_1); 
-        statement[0] = 0;
-        LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_0); 
-    }
-    
-    if((LL_GPIO_IsInputPinSet(GPIOC, LL_GPIO_PIN_2) == 1) && (LL_GPIO_IsInputPinSet(GPIOC, LL_GPIO_PIN_3) == 1) && (LL_GPIO_IsInputPinSet(GPIOC, LL_GPIO_PIN_13) == 1) && (LL_GPIO_IsInputPinSet(GPIOC, LL_GPIO_PIN_14) == 1))
-    {
-        indicator1 = 0;
-        statement[4] = 0;
-        LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_14);
-        statement[5] = 0;
-        LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_13); 
-        statement[6] = 0;
-        LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_3); 
-        statement[7] = 0;
-        LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_2); 
-    }   
-       
-    //using encoder 2
-    if(LL_TIM_GetCounter(TIM3) > N/3 && LL_TIM_GetCounter(TIM3) < N/3*2)
-        right_note = 2;
-    if(LL_TIM_GetCounter(TIM3) >= N/3*2)
-        right_note = 4;
-    if(LL_TIM_GetCounter(TIM3) <= N/3)
-        right_note = 0;
-       
-    //change note on sw2
-    if(indicator2 == 0)
-    {
-        LL_TIM_OC_SetCompareCH1(TIM14, (uint32_t)(0.96 * (note2[indicator2])));
-        LL_TIM_SetAutoReload(TIM14, note2[indicator2]); 
-    }
-    
-    else
-    {
-        LL_TIM_OC_SetCompareCH1(TIM14, (uint32_t)(0.96 * (note2[indicator2 + right_note])));
-        LL_TIM_SetAutoReload(TIM14, note2[indicator2 + right_note]);
-    }    
-    
-    //change note on sw1    
-     LL_TIM_OC_SetCompareCH1(TIM2, (uint32_t)(0.96 * (note1[indicator1 + left_note])));
-        LL_TIM_SetAutoReload(TIM2, note1[indicator1 + left_note]);
-        
-    //work with indicator
-    ms_i++;
-    int point_l = 0;
-    int point_r = 0;
-   
-    if(ms_i >3)
-        ms_i = 0;
-    
-    if((left_note + ms_i) > 2)
-        point_l = 1;
-   
-    if((right_note + ms_i) > 3)
-        point_r = 1;
+    silent();  
 
-    dyn_display_left(note_num_r[ms_i + right_note], ms_i, point_r);
-    //dyn_display_right(note_num_r[ms_i], ms_i, point_r);        
+	chose_sw ();
+
+	enc_move();
+	
+	if(s1.indicator != 0)
+	{
+		LL_TIM_OC_SetCompareCH1(TIM2, (uint32_t)(0.95 * (note1[s1.indicator + move_note])));
+        	LL_TIM_SetAutoReload(TIM2, note1[s1.indicator + move_note]);
+	}	
+	else
+	{
+		LL_TIM_OC_SetCompareCH1(TIM2, (uint32_t)(0.95 * (note1[s1.indicator])));
+        	LL_TIM_SetAutoReload(TIM2, note1[s1.indicator]);
+	}
+	
+	if(s2.indicator != 0)
+	{
+		LL_TIM_OC_SetCompareCH1(TIM14, (uint32_t)(0.95 * (note1[s2.indicator + move_note])));
+        	LL_TIM_SetAutoReload(TIM14, note1[s2.indicator + move_note]);
+	}
+	else
+	{
+		LL_TIM_OC_SetCompareCH1(TIM14, (uint32_t)(0.95 * (note1[s2.indicator])));
+        	LL_TIM_SetAutoReload(TIM14, note1[s2.indicator]);
+	}
 }
-//------------------------------------------------------------------------------
-//Main
-//------------------------------------------------------------------------------
+
 int main(void)
 {
+	but_fill();
     rcc_config();
     gpio_config();
     timers_config_sw1();
-    timers_config_sw2();
+	timers_config_sw2();
     systick_config();
     exti_config();
-    timers_config_enc2();
-    
+	timers_config_enc();
 
     while (1)
     {
