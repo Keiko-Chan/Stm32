@@ -8,7 +8,7 @@
 #include "stm32f0xx_ll_cortex.h"
 #include "system_stm32f0xx.h" // because of there is "uint??_t" this include must be under other.
 #include "stm32f0xx_ll_tim.h"
-
+#include <math.h>
 /**
   * System Clock Configuration
   * The system Clock is configured as follow :
@@ -51,10 +51,74 @@ static void rcc_config()
     SystemCoreClockUpdate(); // we need this func to update SystemClock info.
     
 }
+
+#define A1 LL_GPIO_PIN_8
+#define B1 LL_GPIO_PIN_0
+#define C1 LL_GPIO_PIN_12
+#define D1 LL_GPIO_PIN_14
+#define E1 LL_GPIO_PIN_15
+#define F1 LL_GPIO_PIN_6
+#define G1 LL_GPIO_PIN_11
+#define POINT1 LL_GPIO_PIN_13
+
+#define A2 LL_GPIO_PIN_0
+#define B2 LL_GPIO_PIN_5
+#define C2 LL_GPIO_PIN_7
+#define D2 LL_GPIO_PIN_10
+#define E2 LL_GPIO_PIN_11
+#define F2 LL_GPIO_PIN_1
+#define G2 LL_GPIO_PIN_6
+#define POINT2 LL_GPIO_PIN_12
+
+static uint16_t decoder1[] = {
+
+	A1 | B1 | C1 | D1 | E1 | F1,
+	B1 | C1,
+	A1 | B1 | D1 | E1 | G1,
+	A1 | B1 | C1 | D1 | G1,
+ 	B1 | C1 | F1 | G1,
+	A1 | C1 | D1 | F1 | G1,
+	A1 | C1 | D1 | E1 | F1 | G1,
+	A1 | B1 | C1 | F1,
+	A1 | B1 | C1 | D1 | E1 | F1 | G1,
+	A1 | B1 | C1 | D1 | F1 | G1 		};
+
+static uint16_t decoder2[] = {
+
+	A2 | B2 | C2 | D2 | E2 | F2,
+	B2 | C2,
+	A2 | B2 | D2 | E2 | G2,
+	A2 | B2 | C2 | D2 | G2,
+ 	B2 | C2 | F2 | G2,
+	A2 | C2 | D2 | F2 | G2,
+	A2 | C2 | D2 | E2 | F2 | G2,
+	A2 | B2 | C2 | F2,
+	A2 | B2 | C2 | D2 | E2 | F2 | G2,
+	A2 | B2 | C2 | D2 | F2 | G2 		};
+
+uint16_t POS2[] = {	
+	
+    LL_GPIO_PIN_4 | LL_GPIO_PIN_3 | LL_GPIO_PIN_10,
+    LL_GPIO_PIN_9 | LL_GPIO_PIN_3 | LL_GPIO_PIN_10,
+    LL_GPIO_PIN_9 | LL_GPIO_PIN_4 | LL_GPIO_PIN_10,
+	LL_GPIO_PIN_9 | LL_GPIO_PIN_4 | LL_GPIO_PIN_3, 
+	LL_GPIO_PIN_3 | LL_GPIO_PIN_4 | LL_GPIO_PIN_9 | LL_GPIO_PIN_10		};
+
+uint16_t POS1[] = {
+	
+	LL_GPIO_PIN_7 | LL_GPIO_PIN_6 | LL_GPIO_PIN_15,
+	LL_GPIO_PIN_3 | LL_GPIO_PIN_6 | LL_GPIO_PIN_15,
+	LL_GPIO_PIN_3 | LL_GPIO_PIN_7 | LL_GPIO_PIN_15,
+	LL_GPIO_PIN_3 | LL_GPIO_PIN_7 | LL_GPIO_PIN_6,
+	LL_GPIO_PIN_3 | LL_GPIO_PIN_6 | LL_GPIO_PIN_7 | LL_GPIO_PIN_15		};
+
 static int milliseconds = 0;
 static uint32_t note1[] = {1, 573, 510, 455, 405, 382, 341, 303, 286, 255, 227, 202, 191, 170, 152, 143, 128, 114, 101, 96};
+static int note_num[] = {4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1};
 static int N = 78;		//en-coder round
-static int move_note = 0;
+static int move_note = 4;
+static int ms_i = 0;
+static uint16_t portA_state = 0;
 
 
 static void gpio_config(void)
@@ -62,6 +126,37 @@ static void gpio_config(void)
 	//led
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
 	LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_8, LL_GPIO_MODE_OUTPUT);    
+	
+	 //Init port for indicator     
+    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
+    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_7, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_5, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_11, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_12, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_0, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_1, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_6, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_10, LL_GPIO_MODE_OUTPUT);
+
+    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_7, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_6, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_15, LL_GPIO_MODE_OUTPUT);
+
+    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_4, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_14, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_15, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_13, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_6, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_0, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_8, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_9, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_10, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_12, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_11, LL_GPIO_MODE_OUTPUT);
   
 	////Init ports for buttons 
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
@@ -314,7 +409,7 @@ int chose_sw ()
 }
 
 //handler for buttons
-int butt_handler(struct but * but)
+int but_handler(struct but * but)
 {
 	int ms = milliseconds;
      
@@ -359,22 +454,22 @@ int butt_handler(struct but * but)
 
 void EXTI0_1_IRQHandler()
 {    
-	butt_handler(b + 4);
-	butt_handler(b + 5);
+	but_handler(b + 4);
+	but_handler(b + 5);
 }
 
 void EXTI2_3_IRQHandler()
 {    
-	butt_handler(b + 2);
-	butt_handler(b + 3);
+	but_handler(b + 2);
+	but_handler(b + 3);
 }
 
 void EXTI4_15_IRQHandler()
 { 
-	butt_handler(b + 0);
-	butt_handler(b + 1);
-	butt_handler(b + 6);
-	butt_handler(b + 7);
+	but_handler(b + 0);
+	but_handler(b + 1);
+	but_handler(b + 6);
+	but_handler(b + 7);
 }
 
 //to do all silent if none button is pressed
@@ -406,6 +501,10 @@ void silent(void)
 }
 
 //how to move note see on en-coder
+//static int old_counter = 0;
+//static int counter = 0;
+//static int p = 1;
+
 void enc_move(void)
 {
 	if(LL_TIM_GetCounter(TIM3) >= 5*N/8 && LL_TIM_GetCounter(TIM3) < 7*N/8)
@@ -416,6 +515,58 @@ void enc_move(void)
 		move_note = 8;
 	if(LL_TIM_GetCounter(TIM3) >= 3*N/8 && LL_TIM_GetCounter(TIM3) < 5*N/8)
 		move_note = 11;
+	/*
+	if((LL_TIM_GetCounter(TIM3) - counter) < 0 || (LL_TIM_GetCounter(TIM3) - counter) == N)
+		p = -1;
+	else
+		p = 1;
+		
+	
+	if(abs((LL_TIM_GetCounter(TIM3) - old_counter) > 10))
+	{
+		move_note = move_note + p;
+		old_counter = LL_TIM_GetCounter(TIM3);
+	}
+	 
+	 if(move_note > 11)
+		 move_note = 11;
+	 
+	 if(move_note < 0 )
+		 move_note = 0; 
+	
+	counter = LL_TIM_GetCounter(TIM3);*/
+}
+
+void dyn_display (uint8_t num, int pos, int point, uint16_t *decoder, uint16_t *POS, GPIO_TypeDef *GPIOX, GPIO_TypeDef *GPIOY, uint16_t POINT )
+{
+    uint16_t out;       
+
+    LL_GPIO_WriteOutputPort(GPIOY,(POS[4]));
+    //LL_GPIO_WriteOutputPort(GPIOA, 0);
+
+    out = decoder[num];
+
+    if(point == 1)
+        out = out | POINT;
+
+	
+	if(GPIOX != GPIOA)
+   		LL_GPIO_WriteOutputPort(GPIOX, out);
+	else
+		LL_GPIO_WriteOutputPort(GPIOX, out | portA_state);
+	
+	if(GPIOY != GPIOA)
+    	LL_GPIO_WriteOutputPort(GPIOY, POS[pos]);
+	else
+		LL_GPIO_WriteOutputPort(GPIOY, POS[pos] | portA_state);
+		
+		if(GPIOX == GPIOA)
+			portA_state = out;
+				
+		if(GPIOY == GPIOA)
+			portA_state = POS[pos];
+		
+    return;
 }
 
 //system timer handler
@@ -450,6 +601,21 @@ void SysTick_Handler(void)
 		LL_TIM_OC_SetCompareCH1(TIM14, (uint32_t)(0.95 * (note1[s2.indicator])));
         	LL_TIM_SetAutoReload(TIM14, note1[s2.indicator]);
 	}
+	
+	ms_i++;
+	
+	if(ms_i > 3)
+		ms_i = 0;
+	
+	int p1 = 0;
+	int p2 = 0;
+	if(ms_i + move_note >= 11)
+		p1 = 1;
+	if(ms_i + move_note + 4 >= 11)
+		p2 = 1;
+	
+	dyn_display(note_num[ms_i + move_note], ms_i, p1, decoder1, POS1, GPIOA, GPIOB, POINT1);
+	dyn_display(note_num[ms_i + move_note + 4], ms_i, p2, decoder2, POS2, GPIOC, GPIOA, POINT2);
 }
 
 int main(void)
