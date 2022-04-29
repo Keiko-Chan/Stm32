@@ -123,12 +123,14 @@ static uint16_t portA_state = 0;
 
 static void gpio_config(void)
 {
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
+	
 	//led
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
 	LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_8, LL_GPIO_MODE_OUTPUT);    
 	
-	 //Init port for indicator     
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
+	//Init port for indicator
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_7, LL_GPIO_MODE_OUTPUT);
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_5, LL_GPIO_MODE_OUTPUT);
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_11, LL_GPIO_MODE_OUTPUT);
@@ -138,13 +140,13 @@ static void gpio_config(void)
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_6, LL_GPIO_MODE_OUTPUT);
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_10, LL_GPIO_MODE_OUTPUT);
 
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
+    
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_7, LL_GPIO_MODE_OUTPUT);
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_6, LL_GPIO_MODE_OUTPUT);
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_15, LL_GPIO_MODE_OUTPUT);
 
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
+    
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_4, LL_GPIO_MODE_OUTPUT);
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_14, LL_GPIO_MODE_OUTPUT);
@@ -159,13 +161,11 @@ static void gpio_config(void)
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_11, LL_GPIO_MODE_OUTPUT);
   
 	////Init ports for buttons 
-	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_0, LL_GPIO_MODE_INPUT);
 	LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_1, LL_GPIO_MODE_INPUT);
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_10, LL_GPIO_MODE_INPUT);
     LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_11, LL_GPIO_MODE_INPUT);
 	
-	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_2, LL_GPIO_MODE_INPUT);
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_3, LL_GPIO_MODE_INPUT);
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_13, LL_GPIO_MODE_INPUT);
@@ -173,7 +173,7 @@ static void gpio_config(void)
     
     return;
 }
-
+//system timer
 static void systick_config()
 {
     LL_InitTick(48000000, 1000);
@@ -181,97 +181,53 @@ static void systick_config()
     NVIC_SetPriority(SysTick_IRQn, 1);
 }
 
-//timer 2, pin 5 for sw1
-static void timers_config_sw1(void)
+//timers for sw
+static void timers_config_sw(GPIO_TypeDef *GPIO, uint32_t Pin, uint32_t Alternate, uint32_t PeriphsT, uint32_t PeriphsP, TIM_TypeDef *TIM)
 {     
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_5, LL_GPIO_MODE_ALTERNATE);
-    LL_GPIO_SetAFPin_0_7(GPIOA, LL_GPIO_PIN_5, LL_GPIO_AF_2);
+    LL_AHB1_GRP1_EnableClock(PeriphsP);
+    LL_GPIO_SetPinMode(GPIO, Pin, LL_GPIO_MODE_ALTERNATE);
+    LL_GPIO_SetAFPin_0_7(GPIO, Pin, Alternate);
 
-    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
-    LL_TIM_SetPrescaler(TIM2, 480);
-    LL_TIM_OC_SetCompareCH1(TIM2, 95);
-    LL_TIM_SetAutoReload(TIM2, 100);
-    LL_TIM_CC_EnableChannel(TIM2, LL_TIM_CHANNEL_CH1);
-    LL_TIM_OC_SetPolarity(TIM2, LL_TIM_CHANNEL_CH1, LL_TIM_OCPOLARITY_HIGH);
-    LL_TIM_OC_SetMode(TIM2, LL_TIM_CHANNEL_CH1, LL_TIM_OCMODE_PWM1);
-    LL_TIM_SetCounterMode(TIM2, LL_TIM_COUNTERMODE_UP);
-    LL_TIM_EnableIT_CC1(TIM2);
-    LL_TIM_EnableARRPreload(TIM2);
-    LL_TIM_EnableCounter(TIM2);
+    LL_APB1_GRP1_EnableClock(PeriphsT);
+    LL_TIM_SetPrescaler(TIM, 480);
+    LL_TIM_OC_SetCompareCH1(TIM, 95);
+    LL_TIM_SetAutoReload(TIM, 100);
+    LL_TIM_CC_EnableChannel(TIM, LL_TIM_CHANNEL_CH1);
+    LL_TIM_OC_SetPolarity(TIM, LL_TIM_CHANNEL_CH1, LL_TIM_OCPOLARITY_HIGH);
+    LL_TIM_OC_SetMode(TIM, LL_TIM_CHANNEL_CH1, LL_TIM_OCMODE_PWM1);
+    LL_TIM_SetCounterMode(TIM, LL_TIM_COUNTERMODE_UP);
+    LL_TIM_EnableIT_CC1(TIM);
+    LL_TIM_EnableARRPreload(TIM);
+    LL_TIM_EnableCounter(TIM);
     
     return;
 }
 
-//timer 14, pin 7 for sw2
-static void timers_config_sw2(void)
+//exti line for button
+void set_exti_line(GPIO_TypeDef *GPIO, uint32_t Pin, uint32_t Line, uint32_t Port, uint32_t LLine)
 {
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
-    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_7, LL_GPIO_MODE_ALTERNATE);
-    LL_GPIO_SetAFPin_0_7(GPIOA, LL_GPIO_PIN_7, LL_GPIO_AF_4);
-
-    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM14);
-    LL_TIM_SetPrescaler(TIM14, 480);
-    LL_TIM_OC_SetCompareCH1(TIM14, 95);
-    LL_TIM_SetAutoReload(TIM14, 100);
-    LL_TIM_CC_EnableChannel(TIM14, LL_TIM_CHANNEL_CH1);
-    LL_TIM_OC_SetPolarity(TIM14, LL_TIM_CHANNEL_CH1, LL_TIM_OCPOLARITY_HIGH);
-    LL_TIM_OC_SetMode(TIM14, LL_TIM_CHANNEL_CH1, LL_TIM_OCMODE_PWM1);
-    LL_TIM_SetCounterMode(TIM14, LL_TIM_COUNTERMODE_UP);
-    LL_TIM_EnableIT_CC1(TIM14);
-    LL_TIM_EnableARRPreload(TIM14);
-    LL_TIM_EnableCounter(TIM14);
-
-    return;
+	LL_GPIO_SetPinPull(GPIO, Pin, LL_GPIO_PULL_UP);
+	LL_SYSCFG_SetEXTISource(Port, Line);
+	
+	LL_EXTI_EnableIT_0_31(LLine);
+    LL_EXTI_EnableFallingTrig_0_31(LLine);
 }
 
 //exti for buttons
 static void exti_config()
 {
 	LL_APB1_GRP2_EnableClock(LL_APB1_GRP2_PERIPH_SYSCFG);
-	LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_0, LL_GPIO_PULL_UP);
-	LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_1, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_10, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOB, LL_GPIO_PIN_11, LL_GPIO_PULL_UP);
 	
-	LL_GPIO_SetPinPull(GPIOC, LL_GPIO_PIN_2, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOC, LL_GPIO_PIN_3, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOC, LL_GPIO_PIN_13, LL_GPIO_PULL_UP);
-    LL_GPIO_SetPinPull(GPIOC, LL_GPIO_PIN_14, LL_GPIO_PULL_UP);
-
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE0);
-	LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE1);
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE10);
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE11);
+	set_exti_line(GPIOB, LL_GPIO_PIN_0, LL_SYSCFG_EXTI_LINE0, LL_SYSCFG_EXTI_PORTB, LL_EXTI_LINE_0);
+	set_exti_line(GPIOB, LL_GPIO_PIN_1, LL_SYSCFG_EXTI_LINE1, LL_SYSCFG_EXTI_PORTB, LL_EXTI_LINE_1);
+	set_exti_line(GPIOB, LL_GPIO_PIN_10, LL_SYSCFG_EXTI_LINE10, LL_SYSCFG_EXTI_PORTB, LL_EXTI_LINE_10);
+	set_exti_line(GPIOB, LL_GPIO_PIN_11, LL_SYSCFG_EXTI_LINE11, LL_SYSCFG_EXTI_PORTB, LL_EXTI_LINE_11);
 	
-	LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE2);
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE3);
-	LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE13);
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTC, LL_SYSCFG_EXTI_LINE14);
-    
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_0);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_0);
-
-	LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_1);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_1);
+	set_exti_line(GPIOC, LL_GPIO_PIN_2, LL_SYSCFG_EXTI_LINE2, LL_SYSCFG_EXTI_PORTC, LL_EXTI_LINE_2);
+	set_exti_line(GPIOC, LL_GPIO_PIN_3, LL_SYSCFG_EXTI_LINE3, LL_SYSCFG_EXTI_PORTC, LL_EXTI_LINE_3);
+	set_exti_line(GPIOC, LL_GPIO_PIN_13, LL_SYSCFG_EXTI_LINE13, LL_SYSCFG_EXTI_PORTC, LL_EXTI_LINE_13);
+	set_exti_line(GPIOC, LL_GPIO_PIN_14, LL_SYSCFG_EXTI_LINE14, LL_SYSCFG_EXTI_PORTC, LL_EXTI_LINE_14);
 	
-	LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_2);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_2);
-    
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_3);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_3);
-
-	LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_10);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_10);
-    
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_11);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_11);
-	
-	LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_13);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_13);
-    
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_14);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_14);
 
     NVIC_EnableIRQ(EXTI0_1_IRQn);
     NVIC_SetPriority(EXTI0_1_IRQn, 0);
@@ -327,10 +283,11 @@ struct but but_create(int n, uint32_t e, int s, int m, int t)
 struct sw
 {
 	int indicator;			//note should be played
+	TIM_TypeDef *TIM;
 };
 
-static struct sw s1 = {0};
-static struct sw s2 = {0};
+static struct sw s1 = {0, TIM2};
+static struct sw s2 = {0, TIM14};
 const int but_ar_size = 8;
 static struct but b[8];
 
@@ -537,6 +494,7 @@ void enc_move(void)
 	counter = LL_TIM_GetCounter(TIM3);*/
 }
 
+//set number on display
 void dyn_display (uint8_t num, int pos, int point, uint16_t *decoder, uint16_t *POS, GPIO_TypeDef *GPIOX, GPIO_TypeDef *GPIOY, uint16_t POINT )
 {
     uint16_t out;       
@@ -568,6 +526,20 @@ void dyn_display (uint8_t num, int pos, int point, uint16_t *decoder, uint16_t *
 		
     return;
 }
+//set sound on sw
+void set_sound(struct sw s, int move_note)
+{
+	if(s.indicator != 0)
+	{
+		LL_TIM_OC_SetCompareCH1(s.TIM, (uint32_t)(0.95 * (note1[s.indicator + move_note])));
+        	LL_TIM_SetAutoReload(s.TIM, note1[s.indicator + move_note]);
+	}	
+	else
+	{
+		LL_TIM_OC_SetCompareCH1(s.TIM, (uint32_t)(0.95 * (note1[s.indicator])));
+        	LL_TIM_SetAutoReload(s.TIM, note1[s.indicator]);
+	}	
+}
 
 //system timer handler
 void SysTick_Handler(void)
@@ -580,27 +552,8 @@ void SysTick_Handler(void)
 
 	enc_move();
 	
-	if(s1.indicator != 0)
-	{
-		LL_TIM_OC_SetCompareCH1(TIM2, (uint32_t)(0.95 * (note1[s1.indicator + move_note])));
-        	LL_TIM_SetAutoReload(TIM2, note1[s1.indicator + move_note]);
-	}	
-	else
-	{
-		LL_TIM_OC_SetCompareCH1(TIM2, (uint32_t)(0.95 * (note1[s1.indicator])));
-        	LL_TIM_SetAutoReload(TIM2, note1[s1.indicator]);
-	}
-	
-	if(s2.indicator != 0)
-	{
-		LL_TIM_OC_SetCompareCH1(TIM14, (uint32_t)(0.95 * (note1[s2.indicator + move_note])));
-        	LL_TIM_SetAutoReload(TIM14, note1[s2.indicator + move_note]);
-	}
-	else
-	{
-		LL_TIM_OC_SetCompareCH1(TIM14, (uint32_t)(0.95 * (note1[s2.indicator])));
-        	LL_TIM_SetAutoReload(TIM14, note1[s2.indicator]);
-	}
+	set_sound(s1, move_note);
+	set_sound(s2, move_note);
 	
 	ms_i++;
 	
@@ -621,12 +574,12 @@ void SysTick_Handler(void)
 int main(void)
 {
 	but_fill();
-    rcc_config();
-    gpio_config();
-    timers_config_sw1();
-	timers_config_sw2();
-    systick_config();
-    exti_config();
+	rcc_config();
+	gpio_config();
+	timers_config_sw(GPIOA, LL_GPIO_PIN_5, LL_GPIO_AF_2, LL_APB1_GRP1_PERIPH_TIM2, LL_AHB1_GRP1_PERIPH_GPIOA, TIM2);
+	timers_config_sw(GPIOA, LL_GPIO_PIN_7, LL_GPIO_AF_4, LL_APB1_GRP1_PERIPH_TIM14, LL_AHB1_GRP1_PERIPH_GPIOA, TIM14);
+	systick_config();
+	exti_config();
 	timers_config_enc();
 
     while (1)
