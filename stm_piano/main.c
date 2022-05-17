@@ -115,13 +115,13 @@ uint16_t POS1[] = {
 	LL_GPIO_PIN_3 | LL_GPIO_PIN_7 | LL_GPIO_PIN_6,
 	LL_GPIO_PIN_3 | LL_GPIO_PIN_6 | LL_GPIO_PIN_7 | LL_GPIO_PIN_15		};
 
-static int milliseconds = 0;													//time counter
+static uint32_t milliseconds = 0;																								//time counter
 static uint32_t note1[] = {1, 573, 510, 455, 405, 382, 341, 303, 286, 255, 227, 202, 191, 170, 152, 143, 128, 114, 101, 96};	//number wich get us needed note frequency on sw
-static int note_num[] = {4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1};						//note number for indicator
-static int N = 78;														//en-coder round
-static int move_note = 4;													//octave shift
-static int ms_i = 0;														//counts down evry 4 seconds (in Systick handler)
-static uint16_t portA_state = 0;												//current state of the port (for indicator)
+static int note_num[] = {4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1};												//note number for indicator
+static int N = 78;																												//en-coder round
+static int move_note = 4;																										//octave shift
+static uint32_t ms_i = 0;																										//counts down evry 4 seconds (in Systick handler)
+static uint16_t portA_state = 0;																								//current state of the port (for indicator)
 
 //gpio configuration (ports and pins)
 static void gpio_config(void)	
@@ -234,7 +234,7 @@ static void exti_config()
 	set_exti_line(GPIOC, LL_GPIO_PIN_13, LL_SYSCFG_EXTI_LINE13, LL_SYSCFG_EXTI_PORTC, LL_EXTI_LINE_13);
 	set_exti_line(GPIOC, LL_GPIO_PIN_14, LL_SYSCFG_EXTI_LINE14, LL_SYSCFG_EXTI_PORTC, LL_EXTI_LINE_14);
 	
-
+	//enable interrupts
 	NVIC_EnableIRQ(EXTI0_1_IRQn);
 	NVIC_SetPriority(EXTI0_1_IRQn, 0);
 	
@@ -273,11 +273,11 @@ static void timers_config_enc(void)
 //struct for buttons
 struct but
 {
-	int num;				//number of button
+	int num;						//number of button
 	uint32_t el;	        		//exti line
-	int statement;				//pressed or not
-	int ms_old;				//time beetween pressed (to eliminate inaccuracy)
-	int t_pressed;				//when button change statement to 1;
+	int statement;					//pressed or not
+	int ms_old;						//time beetween pressed (to eliminate inaccuracy)
+	int t_pressed;					//when button change statement to 1;
 };
 
 //structure for buttons 
@@ -380,12 +380,12 @@ int but_handler(struct but * but)
 {
 	int ms = milliseconds;
      
-	if(ms - but->ms_old > 50)
+	if(ms - but->ms_old > 50 || ms - but->ms_old < -50)
 	{            
 		if(LL_EXTI_IsActiveFlag_0_31(but->el))
         	{      
 			
-			
+			//button pressed
 			if(but->statement == 0 && LL_EXTI_IsEnabledFallingTrig_0_31(but->el) == 1) 
 			{
 				LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_8);
@@ -397,6 +397,7 @@ int but_handler(struct but * but)
 				but->ms_old = milliseconds; 
 			}
             
+			//button isn`t pressed
 			else
 				if(but->statement == 1 && LL_EXTI_IsEnabledRisingTrig_0_31(but->el) == 1) 
 				{
@@ -409,6 +410,7 @@ int but_handler(struct but * but)
 		}      
 	}
    
+	//debouncing
 	if(ms - but->ms_old <= 50 && ms - but->ms_old > 0 && LL_EXTI_IsActiveFlag_0_31(but->el))
 	{    
 		but->ms_old = milliseconds; 
