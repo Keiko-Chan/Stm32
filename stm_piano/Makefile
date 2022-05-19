@@ -64,7 +64,7 @@ CFLAGS_EXTRA = -nostartfiles -nodefaultlibs -nostdlib \
 
 CFLAGS += $(DEFINES) $(MCUFLAGS) $(DEBUG_OPTIMIZE_FLAGS) $(CFLAGS_EXTRA) $(INCLUDES)
 
-LDFLAGS = -static $(MCUFLAGS) -Wl,--start-group -lgcc -lc -lg -Wl,--end-group \
+LDFLAGS = -static $(MCUFLAGS) -Wl,--start-group -lgcc -lc -lg -Wl,--end-group, -Wall -Wextra -Wnarrowing -Wwrite-strings -Wcast-qual -Wundef -Wstrict-prototypes -Wbad-function-cast -Wlogical-op -Werror \
           -Wl,--gc-sections -T core/stm32f051r8tx_mmap.ld
 
 .PHONY: dirs all clean flash erase
