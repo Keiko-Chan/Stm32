@@ -21,7 +21,7 @@
   *    PLLMUL                         = 12
   *    Flash Latency(WS)              = 1
   */
-static void rcc_config()
+static void rcc_config(void)
 {     
 	/* Set FLASH latency */
 	LL_FLASH_SetLatency(LL_FLASH_LATENCY_1);
@@ -115,13 +115,13 @@ uint16_t POS1[] = {
 	LL_GPIO_PIN_3 | LL_GPIO_PIN_7 | LL_GPIO_PIN_6,
 	LL_GPIO_PIN_3 | LL_GPIO_PIN_6 | LL_GPIO_PIN_7 | LL_GPIO_PIN_15		};
 
-static uint32_t milliseconds = 0;																								//time counter
-static uint32_t note1[] = {1, 573, 510, 455, 405, 382, 341, 303, 286, 255, 227, 202, 191, 170, 152, 143, 128, 114, 101, 96};	//number wich get us needed note frequency on sw
-static int note_num[] = {4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1};												//note number for indicator
-static int N = 78;																												//en-coder round
-static int move_note = 4;																										//octave shift
-static uint32_t ms_i = 0;																										//counts down evry 4 seconds (in Systick handler)
-static uint16_t portA_state = 0;																								//current state of the port (for indicator)
+static uint32_t milliseconds = 0;												//time counter
+static const uint32_t note1[] = {1, 573, 510, 455, 405, 382, 341, 303, 286, 255, 227, 202, 191, 170, 152, 143, 128, 114, 101, 96};	//number wich get us needed note frequency on sw
+static const int note_num[] = {4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1};					//note number for indicator
+static const uint32_t N = 78;													//en-coder round
+static int move_note = 4;													//octave shift
+static uint32_t ms_i = 0;													//counts down evry 4 seconds (in Systick handler)
+static uint16_t portA_state = 0;												//current state of the port (for indicator)
 
 //gpio configuration (ports and pins)
 static void gpio_config(void)	
@@ -179,7 +179,7 @@ static void gpio_config(void)
 }
 
 //system timer
-static void systick_config()
+static void systick_config(void)
 {
 	LL_InitTick(48000000, 1000);
 	LL_SYSTICK_EnableIT();
@@ -219,7 +219,7 @@ void set_exti_line(GPIO_TypeDef *GPIO, uint32_t Pin, uint32_t Line, uint32_t Por
 }
 
 //exti for buttons
-static void exti_config()
+static void exti_config(void)
 {
 	LL_APB1_GRP2_EnableClock(LL_APB1_GRP2_PERIPH_SYSCFG);
 	
@@ -315,7 +315,7 @@ int but_fill(void)
 }
 
 //function to select unoccupied or the most previously occupied sw to use
-int chose_sw ()
+int chose_sw (void)
 {	
 	int ind1 = 0;
 	int ind2 = 0;
@@ -422,21 +422,21 @@ int but_handler(struct but * but)
 }
 
 //what to do with interruption on 0-1 lines
-void EXTI0_1_IRQHandler()
+void EXTI0_1_IRQHandler(void)
 {    
 	but_handler(b + 4);
 	but_handler(b + 5);
 }
 
 //what to do with interruption on 2-3 lines
-void EXTI2_3_IRQHandler()
+void EXTI2_3_IRQHandler(void)
 {    
 	but_handler(b + 2);
 	but_handler(b + 3);
 }
 
 //what to do with interruption on 4-15 lines
-void EXTI4_15_IRQHandler()
+void EXTI4_15_IRQHandler(void)
 { 
 	but_handler(b + 0);
 	but_handler(b + 1);
@@ -526,12 +526,16 @@ void dyn_display (uint8_t num, int pos, int point, uint16_t *decoder, uint16_t *
 	if(GPIOX != GPIOA)
    		LL_GPIO_WriteOutputPort(GPIOX, out);
 	else
+	{
 		LL_GPIO_WriteOutputPort(GPIOX, out | portA_state);
+	}
 	
 	if(GPIOY != GPIOA)
     		LL_GPIO_WriteOutputPort(GPIOY, POS[pos]);
 	else
+	{
 		LL_GPIO_WriteOutputPort(GPIOY, POS[pos] | portA_state);
+	}
 		
 		if(GPIOX == GPIOA)
 			portA_state = out;
