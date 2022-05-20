@@ -1424,7 +1424,7 @@ typedef struct
   *         @arg @ref LL_ADC_DMA_REG_REGULAR_DATA
   * @retval ADC register address
   */
-__STATIC_INLINE uint32_t LL_ADC_DMA_GetRegAddr(ADC_TypeDef *ADCx, uint32_t Register)
+__STATIC_INLINE uint32_t LL_ADC_DMA_GetRegAddr(ADC_TypeDef *ADCx) //uint32_t Register was unused
 {
   /* Retrieve address of register DR */
   return (uint32_t)&(ADCx->DR);
