@@ -58,15 +58,16 @@ MCUFLAGS = -mcpu=cortex-m0 -mlittle-endian -mfloat-abi=soft -mthumb \
 
 DEBUG_OPTIMIZE_FLAGS = -O0 -ggdb -gdwarf-2
 
-CFLAGS = -Wall -Wextra -Wnarrowing -Wwrite-strings -Wcast-qual -Wundef -Wstrict-prototypes -Wbad-function-cast -Wlogical-op -Werror 
+MYFLAGS = -Wall -Wextra -Wnarrowing -Wwrite-strings -Wcast-qual -Wundef -Wstrict-prototypes -Wbad-function-cast -Wlogical-op -Werror -Wconversion
+OPTIMZ = -Os -fomit-frame-pointer -flto -fno-fat-lto-objects
+MYFLAGS += $(OPTIMZ)
 CFLAGS_EXTRA = -nostartfiles -nodefaultlibs -nostdlib \
                -fdata-sections -ffunction-sections
+               
 
-CFLAGS += $(DEFINES) $(MCUFLAGS) $(DEBUG_OPTIMIZE_FLAGS) $(CFLAGS_EXTRA) $(INCLUDES)
+CFLAGS = $(MYFLAGS) $(DEFINES) $(MCUFLAGS) $(DEBUG_OPTIMIZE_FLAGS) $(CFLAGS_EXTRA) $(INCLUDES)
 
-MYFLAGS = -Wall -Wextra -Wnarrowing -Wwrite-strings -Wcast-qual -Wundef -Wstrict-prototypes -Wbad-function-cast -Wlogical-op -Werror -Wconversion
 
-OPTIMZ = -Os -fomit-frame-pointer -flto -fno-fat-lto-objects
 
 LDFLAGS = -static $(MCUFLAGS) -Wl,--start-group -lgcc -lc -lg -Wl,--end-group\
           -Wl,--gc-sections -T core/stm32f051r8tx_mmap.ld
@@ -112,7 +113,7 @@ gdb-st-util: $(PROJECT).elf
 $(PROJECT).elf: $(OBJS)
 
 %.elf:
-	$(LD) $(MYFLAGS) $(OPTIMZ) $(OBJS) $(LDFLAGS) -o $@
+	$(LD) $(MYFLAGS) $(OBJS) $(LDFLAGS) -o $@
 	$(SIZE) -A $@
 
 %.bin: %.elf
