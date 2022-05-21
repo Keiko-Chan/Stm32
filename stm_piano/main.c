@@ -8,7 +8,8 @@
 #include "stm32f0xx_ll_cortex.h"
 #include "system_stm32f0xx.h" // because of there is "uint??_t" this include must be under other.
 #include "stm32f0xx_ll_tim.h"
-#include <math.h>
+#include <stdlib.h>
+
 /**
   * System Clock Configuration
   * The system Clock is configured as follow :
@@ -115,13 +116,13 @@ uint16_t POS1[] = {
 	LL_GPIO_PIN_3 | LL_GPIO_PIN_7 | LL_GPIO_PIN_6,
 	LL_GPIO_PIN_3 | LL_GPIO_PIN_6 | LL_GPIO_PIN_7 | LL_GPIO_PIN_15		};
 
-static uint32_t milliseconds = 0;												//time counter
+static uint32_t milliseconds = 0;													//time counter
 static const uint32_t note1[] = {1, 573, 510, 455, 405, 382, 341, 303, 286, 255, 227, 202, 191, 170, 152, 143, 128, 114, 101, 96};	//number wich get us needed note frequency on sw
-static const int note_num[] = {4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1};					//note number for indicator
-static const uint32_t N = 78;													//en-coder round
-static int move_note = 4;													//octave shift
-static uint32_t ms_i = 0;													//counts down evry 4 seconds (in Systick handler)
-static uint16_t portA_state = 0;												//current state of the port (for indicator)
+static const uint8_t note_num[] = {4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1};						//note number for indicator
+static const uint32_t N = 78;														//en-coder round
+static uint8_t move_note = 4;														//octave shift
+static uint8_t ms_i = 0;														//counts down evry 4 seconds (in Systick handler)
+static uint16_t portA_state = 0;													//current state of the port (for indicator)
 
 //gpio configuration (ports and pins)
 static void gpio_config(void)	
@@ -215,7 +216,7 @@ void set_exti_line(GPIO_TypeDef *GPIO, uint32_t Pin, uint32_t Line, uint32_t Por
 	LL_SYSCFG_SetEXTISource(Port, Line);
 	
 	LL_EXTI_EnableIT_0_31(LLine);
-    LL_EXTI_EnableFallingTrig_0_31(LLine);
+	LL_EXTI_EnableFallingTrig_0_31(LLine);
 }
 
 //exti for buttons
@@ -274,14 +275,14 @@ static void timers_config_enc(void)
 struct but
 {
 	int num;						//number of button
-	uint32_t el;	        		//exti line
-	int statement;					//pressed or not
-	int ms_old;						//time beetween pressed (to eliminate inaccuracy)
-	int t_pressed;					//when button change statement to 1;
+	uint32_t el;			        		//exti line
+	int statement;						//pressed or not
+	uint32_t ms_old;					//time beetween pressed (to eliminate inaccuracy)
+	uint32_t t_pressed;						//when button change statement to 1;
 };
 
 //structure for buttons 
-struct but but_create(int n, uint32_t e, int s, int m, int t)
+struct but but_create(int n, uint32_t e, int s, uint32_t m, uint32_t t)
 {
 	struct but b = {n, e, s, m, t};
 	return b;
@@ -378,9 +379,9 @@ int chose_sw (void)
 //button reading function
 int but_handler(struct but * but)
 {
-	int ms = milliseconds;
+	uint32_t ms = milliseconds;
      
-	if(ms - but->ms_old > 50 || ms - but->ms_old < -50)
+	if(abs((int)(ms - but->ms_old)) > 50)
 	{            
 		if(LL_EXTI_IsActiveFlag_0_31(but->el))
         	{      
@@ -411,7 +412,7 @@ int but_handler(struct but * but)
 	}
    
 	//debouncing
-	if(ms - but->ms_old <= 50 && ms - but->ms_old > 0 && LL_EXTI_IsActiveFlag_0_31(but->el))
+	if(abs((int)(ms - but->ms_old)) <= 50 && ms - but->ms_old > 0 && LL_EXTI_IsActiveFlag_0_31(but->el))
 	{    
 		but->ms_old = milliseconds; 
 		but->t_pressed = 0;
@@ -580,9 +581,9 @@ void SysTick_Handler(void)
 	if(ms_i > 3)
 		ms_i = 0;
 	
-	int p1 = 0;
-	int p2 = 0;
-	if(ms_i + move_note >= 11)
+	int p1 = 0;				//number (1 display) with a point or not
+	int p2 = 0;				//number (2 display) with a point or not
+	if(ms_i + move_note >= 11)		//check what octave is the note in
 		p1 = 1;
 	if(ms_i + move_note + 4 >= 11)
 		p2 = 1;
