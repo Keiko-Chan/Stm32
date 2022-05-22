@@ -11,6 +11,7 @@ There is code, I made in 2 sem. It has some problems, which I should fix:
 
 rcc_config - configures the board clock
 
+
 gpio_config - configures the necessary pins
 systick_config - enable and configure the system timer
 timers_config_sw - configures the timer for the piezo tweeter
