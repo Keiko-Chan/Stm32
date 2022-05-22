@@ -8,7 +8,6 @@
 #include "stm32f0xx_ll_cortex.h"
 #include "system_stm32f0xx.h" // because of there is "uint??_t" this include must be under other.
 #include "stm32f0xx_ll_tim.h"
-#include <stdlib.h>
 
 /**
   * System Clock Configuration
@@ -116,7 +115,7 @@ uint16_t POS1[] = {
 	LL_GPIO_PIN_3 | LL_GPIO_PIN_7 | LL_GPIO_PIN_6,
 	LL_GPIO_PIN_3 | LL_GPIO_PIN_6 | LL_GPIO_PIN_7 | LL_GPIO_PIN_15		};
 
-static uint32_t milliseconds = 0;													//time counter
+static volatile uint32_t milliseconds = 0;												//time counter
 static const uint32_t note1[] = {1, 573, 510, 455, 405, 382, 341, 303, 286, 255, 227, 202, 191, 170, 152, 143, 128, 114, 101, 96};	//number wich get us needed note frequency on sw
 static const uint8_t note_num[] = {4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1};						//note number for indicator
 static const uint32_t N = 78;														//en-coder round
@@ -278,14 +277,19 @@ struct but
 	uint32_t el;			        		//exti line
 	int statement;						//pressed or not
 	uint32_t ms_old;					//time beetween pressed (to eliminate inaccuracy)
-	uint32_t t_pressed;						//when button change statement to 1;
+	uint32_t t_pressed;					//when button change statement to 1;
 };
 
 //structure for buttons 
-struct but but_create(int n, uint32_t e, int s, uint32_t m, uint32_t t)
+int but_create(int n, uint32_t e, struct but* b)
 {
-	struct but b = {n, e, s, m, t};
-	return b;
+	b->num = n;
+	b->el = e;
+	b->statement = 0;
+	b->ms_old = 0;
+	b->t_pressed = 0;
+	
+	return 0;
 }
 
 //structure for sw
@@ -303,14 +307,14 @@ static struct but b[8];				//button array
 //populate an array of buttons
 int but_fill(void)
 {
-	b[0] = but_create(0, LL_EXTI_LINE_13, 0, 0, 0);
-	b[1] = but_create(1, LL_EXTI_LINE_14, 0, 0, 0);
-	b[2] = but_create(2, LL_EXTI_LINE_2, 0, 0, 0);
-	b[3] = but_create(3, LL_EXTI_LINE_3, 0, 0, 0);
-	b[4] = but_create(4, LL_EXTI_LINE_0, 0, 0, 0);
-	b[5] = but_create(5, LL_EXTI_LINE_1, 0, 0, 0);
-	b[6] = but_create(6, LL_EXTI_LINE_10, 0, 0, 0);
-	b[7] = but_create(7, LL_EXTI_LINE_11, 0, 0, 0);
+	but_create(0, LL_EXTI_LINE_13, b);
+	but_create(1, LL_EXTI_LINE_14, b + 1);
+	but_create(2, LL_EXTI_LINE_2, b + 2);
+	but_create(3, LL_EXTI_LINE_3, b + 3);
+	but_create(4, LL_EXTI_LINE_0, b + 4);
+	but_create(5, LL_EXTI_LINE_1, b + 5);
+	but_create(6, LL_EXTI_LINE_10, b + 6);
+	but_create(7, LL_EXTI_LINE_11, b + 7);
 
 	return 0;
 }
@@ -318,8 +322,8 @@ int but_fill(void)
 //function to select unoccupied or the most previously occupied sw to use
 int chose_sw (void)
 {	
-	int ind1 = 0;
-	int ind2 = 0;
+	int ind1 = 0;				//number (note) that we will set on the sw1
+	int ind2 = 0;				//number (note) that we will set on the sw2
 
 	for(int i = 0; i < but_ar_size; i++)
 	{
@@ -381,7 +385,7 @@ int but_handler(struct but * but)
 {
 	uint32_t ms = milliseconds;
      
-	if(abs((int)(ms - but->ms_old)) > 50)
+	if(ms - but->ms_old > 50)
 	{            
 		if(LL_EXTI_IsActiveFlag_0_31(but->el))
         	{      
@@ -412,7 +416,7 @@ int but_handler(struct but * but)
 	}
    
 	//debouncing
-	if(abs((int)(ms - but->ms_old)) <= 50 && ms - but->ms_old > 0 && LL_EXTI_IsActiveFlag_0_31(but->el))
+	if(ms - but->ms_old <= 50 && ms - but->ms_old > 0 && LL_EXTI_IsActiveFlag_0_31(but->el))
 	{    
 		but->ms_old = milliseconds; 
 		but->t_pressed = 0;
