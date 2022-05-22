@@ -70,7 +70,7 @@ static void rcc_config(void)
 #define POINT2 LL_GPIO_PIN_12
 
 //combinations of pins for numbers (4 segment indicator1)
-static uint16_t decoder1[] = {
+static const uint16_t decoder1[] = {
 
 	A1 | B1 | C1 | D1 | E1 | F1,
 	B1 | C1,
@@ -84,7 +84,7 @@ static uint16_t decoder1[] = {
 	A1 | B1 | C1 | D1 | F1 | G1 		};
 	
 //combinations of pins for numbers (4 segment indicator 2)
-static uint16_t decoder2[] = {
+static const uint16_t decoder2[] = {
 
 	A2 | B2 | C2 | D2 | E2 | F2,
 	B2 | C2,
@@ -98,7 +98,7 @@ static uint16_t decoder2[] = {
 	A2 | B2 | C2 | D2 | F2 | G2 		};
 
 //combinations of pins for a specific number out of four (4 segment indicator2)
-uint16_t POS2[] = {	
+static const uint16_t POS2[] = {	
 	
 	LL_GPIO_PIN_4 | LL_GPIO_PIN_3 | LL_GPIO_PIN_10,
 	LL_GPIO_PIN_9 | LL_GPIO_PIN_3 | LL_GPIO_PIN_10,
@@ -107,7 +107,7 @@ uint16_t POS2[] = {
 	LL_GPIO_PIN_3 | LL_GPIO_PIN_4 | LL_GPIO_PIN_9 | LL_GPIO_PIN_10		};
 
 //combinations of pins for a specific number out of four (4 segment indicator1)
-uint16_t POS1[] = {
+static const uint16_t POS1[] = {
 	
 	LL_GPIO_PIN_7 | LL_GPIO_PIN_6 | LL_GPIO_PIN_15,
 	LL_GPIO_PIN_3 | LL_GPIO_PIN_6 | LL_GPIO_PIN_15,
@@ -273,24 +273,12 @@ static void timers_config_enc(void)
 //struct for buttons
 struct but
 {
-	int num;						//number of button
-	uint32_t el;			        		//exti line
+	const int num;						//number of button
+	const uint32_t el;			        	//exti line
 	int statement;						//pressed or not
 	uint32_t ms_old;					//time beetween pressed (to eliminate inaccuracy)
 	uint32_t t_pressed;					//when button change statement to 1;
 };
-
-//structure for buttons 
-int but_create(int n, uint32_t e, struct but* b)
-{
-	b->num = n;
-	b->el = e;
-	b->statement = 0;
-	b->ms_old = 0;
-	b->t_pressed = 0;
-	
-	return 0;
-}
 
 //structure for sw
 struct sw
@@ -302,22 +290,16 @@ struct sw
 static struct sw s1 = {0, TIM2};		//sw 1
 static struct sw s2 = {0, TIM14};		//sw 2
 const int but_ar_size = 8;			//number of buttonst
-static struct but b[8];				//button array
-
-//populate an array of buttons
-int but_fill(void)
-{
-	but_create(0, LL_EXTI_LINE_13, b);
-	but_create(1, LL_EXTI_LINE_14, b + 1);
-	but_create(2, LL_EXTI_LINE_2, b + 2);
-	but_create(3, LL_EXTI_LINE_3, b + 3);
-	but_create(4, LL_EXTI_LINE_0, b + 4);
-	but_create(5, LL_EXTI_LINE_1, b + 5);
-	but_create(6, LL_EXTI_LINE_10, b + 6);
-	but_create(7, LL_EXTI_LINE_11, b + 7);
-
-	return 0;
-}
+static struct but b[] = {			//button array
+	{0, LL_EXTI_LINE_13, 0, 0, 0},
+	{1, LL_EXTI_LINE_14, 0, 0, 0},
+	{2, LL_EXTI_LINE_2, 0, 0, 0},
+	{3, LL_EXTI_LINE_3, 0, 0, 0},
+	{4, LL_EXTI_LINE_0, 0, 0, 0},
+	{5, LL_EXTI_LINE_1, 0, 0, 0},
+	{6, LL_EXTI_LINE_10, 0, 0, 0},
+	{7, LL_EXTI_LINE_11, 0, 0, 0}
+};
 
 //function to select unoccupied or the most previously occupied sw to use
 int chose_sw (void)
@@ -407,7 +389,6 @@ int but_handler(struct but * but)
 				if(but->statement == 1 && LL_EXTI_IsEnabledRisingTrig_0_31(but->el) == 1) 
 				{
 					but->statement = 0;
-					but->t_pressed = 0;
 			
 					LL_EXTI_EnableFallingTrig_0_31(but->el);   
 					but->ms_old = milliseconds;
@@ -419,7 +400,6 @@ int but_handler(struct but * but)
 	if(ms - but->ms_old <= 50 && LL_EXTI_IsActiveFlag_0_31(but->el))
 	{    
 		but->ms_old = milliseconds; 
-		but->t_pressed = 0;
 	}
     
    	LL_EXTI_ClearFlag_0_31(but->el);
@@ -515,7 +495,7 @@ void enc_move(void)
 }
 
 //set number on display
-void dyn_display (uint8_t num, int pos, int point, uint16_t *decoder, uint16_t *POS, GPIO_TypeDef *GPIOX, GPIO_TypeDef *GPIOY, uint16_t POINT )
+void dyn_display (uint8_t num, int pos, int point, const uint16_t *decoder, const uint16_t *POS, GPIO_TypeDef *GPIOX, GPIO_TypeDef *GPIOY, uint16_t POINT )
 {
 	uint16_t out;       
 
@@ -598,7 +578,6 @@ void SysTick_Handler(void)
 
 int main(void)
 {
-	but_fill();
 	rcc_config();
 	gpio_config();
 	timers_config_sw(GPIOA, LL_GPIO_PIN_5, LL_GPIO_AF_2, LL_APB1_GRP1_PERIPH_TIM2, LL_AHB1_GRP1_PERIPH_GPIOA, TIM2);
