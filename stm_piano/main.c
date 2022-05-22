@@ -416,7 +416,7 @@ int but_handler(struct but * but)
 	}
    
 	//debouncing
-	if(ms - but->ms_old <= 50 && ms - but->ms_old > 0 && LL_EXTI_IsActiveFlag_0_31(but->el))
+	if(ms - but->ms_old <= 50 && LL_EXTI_IsActiveFlag_0_31(but->el))
 	{    
 		but->ms_old = milliseconds; 
 		but->t_pressed = 0;
